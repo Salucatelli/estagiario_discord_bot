@@ -1,3 +1,3 @@
-#Estagiário Bot
+# Estagiário Bot
 
-###Bot de música para discord em desenvolvimento
+### Bot de música para discord em desenvolvimento
