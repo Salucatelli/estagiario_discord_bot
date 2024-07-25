@@ -1,3 +1,8 @@
 # Estagiário Bot
 
-### Bot de música para discord em desenvolvimento
+## Português
+
+### - Bot de música para discord em desenvolvimento
+
+## English
+### - Discord music bot in development
