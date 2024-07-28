@@ -6,6 +6,8 @@ import discord
 from discord.ext import commands
 import urllib.parse, urllib.request, re
 
+playing = False
+
 def run_bot():
     #STEP 0: LOAD THE DOTENV
     load_dotenv()
@@ -17,7 +19,7 @@ def run_bot():
     client = commands.Bot(command_prefix=".", intents = intents)
 
     #The music queue
-    queues = {}           
+    queues = {}     
 
     voice_clients = {}
     
@@ -35,15 +37,25 @@ def run_bot():
     async def on_ready():
         print(f"{client.user} is now On!")
     
+    ###  PLAY SONG COMMANDS  ###
+
     #Play next song
     async def play_next(ctx):
+        global playing
+        
         if queues[ctx.guild.id] != []:
             link = queues[ctx.guild.id].pop(0)
+            playing = False
             await play(ctx, link=link)
+        else:  
+            playing = False
+            await ctx.channel.send("Nada na fila")
      
     #Play a song
     @client.command(name="play")
     async def play(ctx, *, link):
+        global playing
+        
         try:
             voice_client = await ctx.author.voice.channel.connect()     #Connect to the channel
             voice_clients[voice_client.guild.id] = voice_client
@@ -70,16 +82,27 @@ def run_bot():
             song = data['url']
             player = discord.FFmpegOpusAudio(song, **ffmpeg_options)
 
-            #Song message
-            await ctx.channel.send(f"Tocando {link}")  #data["fulltitle"] para colocar titulo
-            
-            voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
+            #Creates the queue for the guild
+            if ctx.guild.id not in queues:
+                queues[ctx.guild.id] = []
+
+            if(not playing):
+                playing = True
+                
+                #Song message
+                await ctx.channel.send(f"Tocando {link}")  #data["fulltitle"] to use the title
+                
+                voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
+            else:
+                queues[ctx.guild.id].append(link)
+                await ctx.send(f"{link} Adicionado a fila!")
+                
         except Exception as e:
             print(e)
             
         #Add to queue
         @client.command(name="queue")
-        async def queue(ctz, url):
+        async def queue(ctx, url):
             if ctx.guild.id not in queues:
                 queues[ctx.guild.id] = []
             queues[ctx.guild.id].append(url)
@@ -118,7 +141,6 @@ def run_bot():
         async def skip(ctx):
             try:
                 voice_clients[ctx.guild.id].stop()
-                await ctx.channel.send("Pulando música!")
             except Exception as e:
                 print(e)
                 
@@ -126,9 +148,25 @@ def run_bot():
         @client.command(name="clean_queue")
         async def clean_queue(ctx):
             try:
-                queue = {}
+                queues = {}
                 await ctx.channel.send("Lista apagada com sucesso!")
             except Exception as e:
                 print(e)
                 
+        #Show queue
+        @client.command(name="show_queue")
+        async def show_queue(ctx):
+            try:
+                loop = asyncio.get_event_loop()
+                songs = []
+                n = 0
+                
+                for song in queues[ctx.guild.id]: 
+                    data = await loop.run_in_executor(None, lambda: ytdl.extract_info((song), download=False))
+                    songs.append(data["fulltitle"])
+                    n += 1
+                await ctx.channel.send(songs)
+            except Exception as e:
+                print(e)
+            
     client.run(TOKEN)
