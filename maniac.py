@@ -49,7 +49,6 @@ def run_bot():
             await play(ctx, link=link)
         else:  
             playing = False
-            await ctx.channel.send("Nada na fila")
      
     #Play a song
     @client.command(name="play")
@@ -100,73 +99,86 @@ def run_bot():
         except Exception as e:
             print(e)
             
-        #Add to queue
-        @client.command(name="queue")
-        async def queue(ctx, url):
-            if ctx.guild.id not in queues:
-                queues[ctx.guild.id] = []
-            queues[ctx.guild.id].append(url)
-            await ctx.send(f"{url} Adicionado a fila!")
-            
-        #Pause the song
-        @client.command(name="pause")
-        async def pause(ctx):
-            try:
-                voice_clients[ctx.guild.id].pause()
-                await ctx.channel.send("Musica pausada")
-            except Exception as e:
-                print(e)
-          
-        #Resume song      
-        @client.command(name="resume")
-        async def resume(ctx):
-            try:
-                voice_clients[ctx.guild.id].resume()
-                await ctx.channel.send("Tocando...")
-            except Exception as e:
-                print(e)
-                
-        #Stop playing
-        @client.command(name="stop")
-        async def stop(ctx):
-            try:
-                voice_clients[ctx.guild.id].stop()
-                await voice_clients[ctx.guild.id].disconnect()
-                await ctx.channel.send("Parei!")
-            except Exception as e:
-                print(e)
+    #Pause the song
+    @client.command(name="pause")
+    async def pause(ctx):
+        try:
+            voice_clients[ctx.guild.id].pause()
+            await ctx.channel.send("Musica pausada")
+        except Exception as e:
+            print(e)
         
-        #Skip song
-        @client.command(name="skip")
-        async def skip(ctx):
-            try:
-                voice_clients[ctx.guild.id].stop()
-            except Exception as e:
-                print(e)
-                
-        #Clean queue
-        @client.command(name="clean_queue")
-        async def clean_queue(ctx):
-            try:
-                queues = {}
-                await ctx.channel.send("Lista apagada com sucesso!")
-            except Exception as e:
-                print(e)
-                
-        #Show queue
-        @client.command(name="show_queue")
-        async def show_queue(ctx):
-            try:
+    #Resume song      
+    @client.command(name="resume")
+    async def resume(ctx):
+        try:
+            voice_clients[ctx.guild.id].resume()
+            await ctx.channel.send("Tocando...")
+        except Exception as e:
+            print(e)
+            
+    #Stop playing
+    @client.command(name="stop")
+    async def stop(ctx):
+        try:
+            queues[ctx.guild.id] = []
+            voice_clients[ctx.guild.id].stop()
+            await voice_clients[ctx.guild.id].disconnect()
+            await ctx.channel.send("Parei!")     
+        except Exception as e:
+            print(e)
+    
+    #Skip song
+    @client.command(name="skip")
+    async def skip(ctx):
+        try:
+            voice_clients[ctx.guild.id].stop()
+        except Exception as e:
+            print(e)
+            
+    #Queue Commands----------------------------------------------------        
+    
+    #Clean queue
+    @client.command(name="clean_queue")
+    async def clean_queue(ctx):
+        try:
+            queues = {}
+            await ctx.channel.send("Lista apagada com sucesso!")
+        except Exception as e:
+            print(e)
+            
+    #Show queue
+    @client.command(name="show_queue")
+    async def show_queue(ctx):
+        try:     
+            if queues[ctx.guild.id] != []:
                 loop = asyncio.get_event_loop()
-                songs = []
-                n = 0
-                
+                songs = ""
+                n = 1
+            
                 for song in queues[ctx.guild.id]: 
                     data = await loop.run_in_executor(None, lambda: ytdl.extract_info((song), download=False))
-                    songs.append(data["fulltitle"])
+                    # songs.append(data["fulltitle"])
+                    songs += f"{n} - {data["fulltitle"]}\n"
                     n += 1
                 await ctx.channel.send(songs)
-            except Exception as e:
-                print(e)
-            
+            else:
+                await ctx.channel.send("Nada na fila")
+        except Exception as e:
+            print(e)
+    
+    @client.command(name="remove")
+    async def remove(ctx, link):
+        try:
+            if queues[ctx.guild.id][int(link)-1]:
+                print(queues[ctx.guild.id])
+                queues[ctx.guild.id].remove(queues[ctx.guild.id][int(link)-1])
+                print(queues[ctx.guild.id])
+                await ctx.channel.send("Música removinda com sucesso!")
+            else:
+                await ctx.channel.send("Música não encontrada")
+        except Exception as e:
+            print(e)
+        
+                  
     client.run(TOKEN)
