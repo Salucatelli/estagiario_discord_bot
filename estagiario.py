@@ -6,12 +6,11 @@ import discord
 from discord.ext import commands
 import urllib.parse, urllib.request, re
 
-playing = False
 
 def run_bot():
     #STEP 0: LOAD THE DOTENV
     load_dotenv()
-    TOKEN = os.getenv("DISCORD_TOKEN")
+    TOKEN = os.getenv("BOT_TOKEN")
     
     #STEP 1: BOT SETUP  
     intents = discord.Intents.default()
@@ -22,9 +21,14 @@ def run_bot():
     queues = {}     
 
     voice_clients = {}
+
+    #A dictionary that has the guild_id as key, and tells if the bot is playing
+    playing = {}
     
     #Youtube settings
-    yt_dl_options = {"format": "bestaudio/best"}
+    yt_dl_options = {
+        "format": "bestaudio/best"
+    }
     ytdl = yt_dlp.YoutubeDL(yt_dl_options)
     youtube_base_url = "https://youtube.com/"
     youtube_results_url = youtube_base_url + "results?"
@@ -41,19 +45,19 @@ def run_bot():
 
     #Play next song
     async def play_next(ctx):
-        global playing
         
         if queues[ctx.guild.id] != []:
             link = queues[ctx.guild.id].pop(0)
-            playing = False
+            
+            playing[ctx.guild.id] = False
             await play(ctx, link=link)
         else:  
-            playing = False
+
+            playing[ctx.guild.id] = False
      
     #Play a song
     @client.command(name="play")
     async def play(ctx, *, link):
-        global playing
         
         try:
             voice_client = await ctx.author.voice.channel.connect()     #Connect to the channel
@@ -79,14 +83,18 @@ def run_bot():
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(link, download=False))
 
             song = data['url']
-            player = discord.FFmpegOpusAudio(song, **ffmpeg_options)
+            
+            try:
+                player = discord.FFmpegOpusAudio(song, **ffmpeg_options)
+            except Exception as ex:
+                print("Mensagem de erro: ", ex)
 
             #Creates the queue for the guild
             if ctx.guild.id not in queues:
                 queues[ctx.guild.id] = []
 
-            if(not playing):
-                playing = True
+            if not playing.get(ctx.guild.id, False):
+                playing[ctx.guild.id] = True
                 
                 #Song message
                 await ctx.channel.send(f"Tocando {link}")  #data["fulltitle"] to use the title
@@ -159,7 +167,7 @@ def run_bot():
                 for song in queues[ctx.guild.id]: 
                     data = await loop.run_in_executor(None, lambda: ytdl.extract_info((song), download=False))
                     # songs.append(data["fulltitle"])
-                    songs += f"{n} - {data["fulltitle"]}\n"
+                    songs += f"{n} - {data['fulltitle']}\n"
                     n += 1
                 await ctx.channel.send(songs)
             else:

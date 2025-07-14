@@ -1,4 +1,4 @@
-import maniac
+import estagiario
 
 if __name__ == "__main__":
-    maniac.run_bot()
+    estagiario.run_bot()
