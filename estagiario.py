@@ -6,6 +6,8 @@ import discord
 from discord.ext import commands
 import urllib.parse, urllib.request, re
 
+from GuildMusicPlayer import GuildMusicPlayer
+
 
 def run_bot():
     #STEP 0: LOAD THE DOTENV
@@ -24,6 +26,9 @@ def run_bot():
 
     #A dictionary that has the guild_id as key, and tells if the bot is playing
     playing = {}
+
+    # This dictionary contains the players pf each guild
+    guild_music_players = {}
     
     #Youtube settings
     yt_dl_options = {
@@ -50,9 +55,10 @@ def run_bot():
             link = queues[ctx.guild.id].pop(0)
             
             playing[ctx.guild.id] = False
+            guild_music_players[ctx.guild.id].current_playing = False
             await play(ctx, link=link)
         else:  
-
+            guild_music_players[ctx.guild.id].current_playing = False
             playing[ctx.guild.id] = False
      
     #Play a song
@@ -60,12 +66,18 @@ def run_bot():
     async def play(ctx, *, link):
         
         try:
-            voice_client = await ctx.author.voice.channel.connect()     #Connect to the channel
-            voice_clients[voice_client.guild.id] = voice_client
+            # Alteracao para usar classes
+            if ctx.guild.id not in guild_music_players:
+                guild_music_players[ctx.guild.id] = GuildMusicPlayer(ctx.guild.id)
+
+            guild_music_players[ctx.guild.id].voice_client = await ctx.author.voice.channel.connect()
+            #voice_client = await ctx.author.voice.channel.connect()     #Connect to the channel
+            #voice_clients[voice_client.guild.id] = voice_client
         except Exception as e:
             print(e)
 
         try:
+            # If the message is not a link, it tries to search on youtube
             if youtube_base_url not in link:
                 query_string = urllib.parse.urlencode({
                     'search_query': link
@@ -89,19 +101,28 @@ def run_bot():
             except Exception as ex:
                 print("Mensagem de erro: ", ex)
 
-            #Creates the queue for the guild
+            # Creates the queue for the guild
             if ctx.guild.id not in queues:
                 queues[ctx.guild.id] = []
 
-            if not playing.get(ctx.guild.id, False):
+            
+            # if it is not playing yet
+            # if not playing.get(ctx.guild.id, False):
+            if not guild_music_players[ctx.guild.id].current_playing:
+                guild_music_players[ctx.guild.id].current_playing = True
                 playing[ctx.guild.id] = True
                 
                 #Song message
                 await ctx.channel.send(f"Tocando {link}")  #data["fulltitle"] to use the title
                 
-                voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
+                guild_music_players[ctx.guild.id].voice_client.play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
+
+                #voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
             else:
                 queues[ctx.guild.id].append(link)
+                # Adds the song to the queue
+                guild_music_players[ctx.guild.id].queue.append(link)
+
                 await ctx.send(f"{link} Adicionado a fila!")
                 
         except Exception as e:
@@ -111,7 +132,8 @@ def run_bot():
     @client.command(name="pause")
     async def pause(ctx):
         try:
-            voice_clients[ctx.guild.id].pause()
+            guild_music_players[ctx.guild.id].voice_client.pause()
+            #voice_clients[ctx.guild.id].pause()
             await ctx.channel.send("Musica pausada")
         except Exception as e:
             print(e)
@@ -120,7 +142,8 @@ def run_bot():
     @client.command(name="resume")
     async def resume(ctx):
         try:
-            voice_clients[ctx.guild.id].resume()
+            guild_music_players[ctx.guild.id].voice_client.resume()
+            #voice_clients[ctx.guild.id].resume()
             await ctx.channel.send("Tocando...")
         except Exception as e:
             print(e)
@@ -129,9 +152,12 @@ def run_bot():
     @client.command(name="stop")
     async def stop(ctx):
         try:
-            queues[ctx.guild.id] = []
-            voice_clients[ctx.guild.id].stop()
-            await voice_clients[ctx.guild.id].disconnect()
+            guild_music_players[ctx.guild.id].queue = []
+            #queues[ctx.guild.id] = []
+            guild_music_players[ctx.guild.id].voice_client.stop()
+            #voice_clients[ctx.guild.id].stop()
+            guild_music_players[ctx.guild.id].voice_client.disconnect()
+            #await voice_clients[ctx.guild.id].disconnect()
             await ctx.channel.send("Parei!")     
         except Exception as e:
             print(e)
@@ -140,7 +166,8 @@ def run_bot():
     @client.command(name="skip")
     async def skip(ctx):
         try:
-            voice_clients[ctx.guild.id].stop()
+            guild_music_players[ctx.guild.id].voice_client.stop()
+            #voice_clients[ctx.guild.id].stop()
         except Exception as e:
             print(e)
             
