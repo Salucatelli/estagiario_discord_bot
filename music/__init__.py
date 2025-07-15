@@ -1,0 +1,1 @@
+print("Music cog loaded")
