@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  discord-bot:
+    build: .
+    container_name: estagiario_bot
+    restart: unless-stopped
+    env_file:
+      - ./bot/.env
+    volumes:
+      - ./bot:/usr/src/app
+    tty: true
