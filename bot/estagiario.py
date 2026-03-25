@@ -42,9 +42,12 @@ def run_bot():
     #ffmpeg settings
     ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
     
-    # Carrega os cogs
+    # Load cogs function
     async def load_extensions():
-        await client.load_extension("music.music_cog")
+        await client.load_extension("cogs.music.music_cog")
+        await client.load_extension("cogs.attachment.FileCommand")
+
+    ### Cogs are basicaly modules to separate commands in diferent files
 
     @client.event
     async def on_ready():
