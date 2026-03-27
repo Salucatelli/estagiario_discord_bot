@@ -139,6 +139,39 @@ class MusicCog(commands.Cog):
             player.voice_client.stop()
         except Exception as e:
             print(e)
+            
+    #Leave the channel
+    @commands.command(name="leave")
+    async def leave(self, ctx):
+        # Checks if the user is in a voice channel
+        if ctx.author.voice is None:
+            await ctx.send("Você precisa estar em um canal de voz.")
+            return
+
+        player = self.guild_music_players[ctx.guild.id]
+        
+        if player.voice_client is None or not player.voice_client.is_connected():
+            return
+        
+        player.queue = []
+        player.current_playing = False
+        
+        await player.voice_client.disconnect()
+        
+    @commands.command(name="members")
+    async def members(self, ctx):
+        # Checks if the user is in a voice channel
+        if ctx.author.voice is None:
+            await ctx.send("Você precisa estar em um canal de voz.")
+            return
+        
+        player = self.guild_music_players[ctx.guild.id]
+        
+        channel = player.voice_client.channel
+        
+        await ctx.send("Membros da call: ")
+        for member in channel.members:
+            await ctx.channel.send(member.name)
 
 async def setup(bot):
     await bot.add_cog(MusicCog(bot))
