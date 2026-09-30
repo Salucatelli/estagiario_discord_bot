@@ -67,5 +67,5 @@ webencodings==0.5.1
 websockets==12.0
 yarg==0.1.9
 yarl==1.9.4
-yt-dlp==2025.6.30
+yt-dlp[default]
 ffmpeg==1.4
